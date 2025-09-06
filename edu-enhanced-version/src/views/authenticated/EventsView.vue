@@ -64,10 +64,17 @@ const fetchEvents = async () => {
     loading.value = false
   }
 }
-
 const createEvent = async () => {
-  if (!eventTitle.value || !eventDesc.value || !eventLocation.value || !eventDate.value || !eventStartTime.value || !eventEndTime.value) {
-    toast.error('Please fill in all required fields')
+  // Trimmed values for validation
+  const title = eventTitle.value.trim()
+  const desc = eventDesc.value.trim()
+  const location = eventLocation.value.trim()
+  const date = eventDate.value.trim()
+  const startTime = eventStartTime.value.trim()
+  const endTime = eventEndTime.value.trim()
+
+  if (!title || !desc || !location || !date || !startTime || !endTime) {
+    toast.error('Please fill in all required fields (no empty spaces)')
     return
   }
 
@@ -77,11 +84,20 @@ const createEvent = async () => {
   }
 
   const today = new Date()
-  today.setHours(0, 0, 0, 0) // normalize (ignore time part)
+  today.setHours(0, 0, 0, 0)
 
-  const selectedDate = new Date(eventDate.value)
+  const selectedDate = new Date(date)
   if (selectedDate < today) {
     toast.error('Event date cannot be in the past')
+    return
+  }
+
+  // ⏰ Time validation
+  const startDateTime = new Date(`${date}T${startTime}`)
+  const endDateTime = new Date(`${date}T${endTime}`)
+
+  if (endDateTime <= startDateTime) {
+    toast.error('End time must be later than start time')
     return
   }
 
@@ -89,27 +105,27 @@ const createEvent = async () => {
 
   try {
     await addDoc(collection(db, 'events'), {
-      title: eventTitle.value,
-      description: eventDesc.value,
-      location: eventLocation.value,
-      date: eventDate.value,
-      startTime: eventStartTime.value,
-      endTime: eventEndTime.value,
+      title,
+      description: desc,
+      location,
+      date,
+      startTime,
+      endTime,
       createdAt: serverTimestamp(),
       uid: currentUser.value.uid,
-
       user: {
-            email: currentUser.value.email,
-            firstName: userDetails.value?.firstName ?? '',
-            lastName: userDetails.value?.lastName ?? '',
-            displayName: userDetails.value?.displayName ?? currentUser.value.displayName ?? '',
-            photoUrl: userDetails.value?.photoUrl ?? currentUser.value.photoURL ?? '',
-        },
+        email: currentUser.value.email,
+        firstName: userDetails.value?.firstName ?? '',
+        lastName: userDetails.value?.lastName ?? '',
+        displayName: userDetails.value?.displayName ?? currentUser.value.displayName ?? '',
+        photoUrl: userDetails.value?.photoUrl ?? currentUser.value.photoURL ?? '',
+      },
     })
 
     toast.success('Event created successfully')
     isAddEventShown.value = false
 
+    // reset form
     eventTitle.value = ''
     eventDesc.value = ''
     eventLocation.value = ''
@@ -125,6 +141,7 @@ const createEvent = async () => {
     isSubmitting.value = false
   }
 }
+
 
 onMounted(() => {
   fetchEvents()
@@ -186,7 +203,7 @@ onMounted(() => {
           </div>
 
           <div>
-            <label class="block font-medium mb-1" for="location">Location</label>
+            <label class="block font-medium mb-1" for="location">Location *</label>
             <input
               id="location"
               v-model="eventLocation"
